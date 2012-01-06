@@ -111,6 +111,10 @@ public class SCMTrigger extends Trigger<SCMedItem> {
         }
     }
 
+    public final boolean isSynchronousPolling() {
+        return getDescriptor().synchronousPolling;
+    }
+
     @Override
     public DescriptorImpl getDescriptor() {
         return (DescriptorImpl)super.getDescriptor();
@@ -147,6 +151,11 @@ public class SCMTrigger extends Trigger<SCMedItem> {
         public boolean synchronousPolling = false;
 
         /**
+         * If synchronous polling is enabled, it will respect this specified cron tab
+         */
+        public String synchronousPollingCronTabSpec = "";
+
+        /**
          * Max number of threads for SCM polling.
          * 0 for unbounded.
          */
@@ -155,6 +164,22 @@ public class SCMTrigger extends Trigger<SCMedItem> {
         public DescriptorImpl() {
             load();
             resizeThreadPool();
+        }
+
+        public final boolean isSynchronousPolling() {
+            return synchronousPolling;
+        }
+
+        public void setSynchronousPolling(boolean synchronousPolling) {
+            this.synchronousPolling = synchronousPolling;
+        }
+
+        public final String getSynchronousPollingCronTabSpec() {
+            return synchronousPollingCronTabSpec;
+        }
+
+        public void setSynchronousPollingCronTabSpec(String synchronousPollingCronTabSpec) {
+            this.synchronousPollingCronTabSpec = synchronousPollingCronTabSpec;
         }
 
         public boolean isApplicable(Item item) {
@@ -236,11 +261,25 @@ public class SCMTrigger extends Trigger<SCMedItem> {
 
         @Override
         public boolean configure(StaplerRequest req, JSONObject json) throws FormException {
-            String t = json.optString("pollingThreadCount",null);
-            if(t==null || t.length()==0)
-                setPollingThreadCount(0);
-            else
-                setPollingThreadCount(Integer.parseInt(t));
+
+        	boolean syncPoll = Boolean.valueOf(req.getParameter("poll_scm_sync"));
+        	synchronousPolling = syncPoll;
+        	if (syncPoll) {
+        		setPollingThreadCount(1);
+        		String cronSpec = req.getParameter("poll_scm_sync_spec");
+        		if (cronSpec == null) {
+        			setSynchronousPollingCronTabSpec("");
+        		} else {
+        			setSynchronousPollingCronTabSpec(cronSpec);
+        		}
+        	} else {
+        		String t = req.getParameter("pollingThreadCount");
+        		if (t == null || t.length() == 0) {
+        			setPollingThreadCount(0);
+        		} else {
+        			setPollingThreadCount(Integer.parseInt(t));
+        		}
+        	}
 
             // Save configuration
             save();

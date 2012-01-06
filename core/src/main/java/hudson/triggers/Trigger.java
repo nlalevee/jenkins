@@ -155,8 +155,8 @@ public abstract class Trigger<J extends Item> implements Describable<Trigger<?>>
      * some polling work.
      */
     protected Trigger(String cronTabSpec) throws ANTLRException {
-        this.spec = cronTabSpec;
-        this.tabs = CronTabList.create(cronTabSpec);
+        this.spec = cronTabSpec == null ? "" : cronTabSpec;
+        this.tabs = CronTabList.create(spec);
     }
 
     /**
@@ -231,17 +231,23 @@ public abstract class Trigger<J extends Item> implements Describable<Trigger<?>>
                 // Process SCMTriggers in the order of dependencies. Note that the crontab spec expressed per-project is
                 // ignored, only the global setting is honored. The polling job is submitted only if the previous job has
                 // terminated.
-                // FIXME allow to set a global crontab spec
-                previousSynchronousPolling = scmd.getExecutor().submit(new DependencyRunner(new ProjectRunnable() {
-                    public void run(AbstractProject p) {
-                        for (Trigger t : (Collection<Trigger>) p.getTriggers().values()) {
-                            if (t instanceof SCMTrigger) {
-                                LOGGER.fine("synchronously triggering SCMTrigger for project " + t.job.getName());
-                                t.run();
+                try {
+                    CronTabList tabList = CronTabList.create(scmd.synchronousPollingCronTabSpec);
+                    if (tabList.check(cal)) {
+                        previousSynchronousPolling = scmd.getExecutor().submit(new DependencyRunner(new ProjectRunnable() {
+                            public void run(AbstractProject p) {
+                                for (Trigger t : (Collection<Trigger>) p.getTriggers().values()) {
+                                    if (t instanceof SCMTrigger) {
+                                        LOGGER.fine("synchronously triggering SCMTrigger for project " + t.job.getName());
+                                        t.run();
+                                    }
+                                }
                             }
-                        }
+                        }));
                     }
-                }));
+                } catch (ANTLRException e) {
+                    LOGGER.log(Level.WARNING, "Incorrect cron tab for synchronous polling", e);
+                }
             } else {
                 LOGGER.fine("synchronous polling has detected unfinished jobs, will not trigger additional jobs.");
             }

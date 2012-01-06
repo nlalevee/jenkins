@@ -30,10 +30,17 @@ THE SOFTWARE.
       so let's hide this option for new users to avoid confusing them.
     -->
     <f:section title="${%SCM Polling}">
-      <f:entry title="${%Max # of concurrent polling}" field="pollingThreadCount">
-        <f:number value="${descriptor.pollingThreadCount==0 ? '' : descriptor.pollingThreadCount}"
-           clazz="positive-number" min="1" step="1"/>
-      </f:entry>
+      <f:radioBlock name="poll_scm_sync" value="false" title="${%Use threaded polling}" checked="${!instance.synchronousPolling}">
+        <f:entry title="${%Max # of concurrent polling}" field="pollingThreadCount">
+          <f:number value="${descriptor.pollingThreadCount==0 ? '' : descriptor.pollingThreadCount}"
+             clazz="positive-number" min="1" step="1"/>
+        </f:entry>
+      </f:radioBlock>
+      <f:radioBlock name="poll_scm_sync" value="true" title="${%Use synchronous polling}" checked="${instance.synchronousPolling}">
+        <f:entry title="${%Schedule}">
+          <f:textarea name="poll_scm_sync_spec" checkUrl="'${rootURL}/trigger/TimerTrigger/check?value='+encodeURIComponent(this.value)" value="${instance.synchronousPollingCronTabSpec}"/>
+        </f:entry>
+      </f:radioBlock>
     </f:section>
   </j:if>
 </j:jelly>
